@@ -28,7 +28,7 @@ async Task<int> GetEnrollmentGroupsRegistrationsCountAsync(ProvisioningServiceCl
     Console.WriteLine("Calculating device enrollment group registrations...");
 
     int totalEnrollmentGroupsRegistrations = 0;
-    using (Query query = psc.CreateEnrollmentGroupQuery(new QuerySpecification("SELECT * FROM enrollmentGroups"), 1024))
+    using (Query query = psc.CreateEnrollmentGroupQuery(new QuerySpecification("SELECT * FROM enrollmentGroups"), 1000))
     {
         ParallelOptions parallelOptions = new()
         {
@@ -80,6 +80,10 @@ async Task<int> GetRegistrationsCountAsync(ProvisioningServiceClient psc, Enroll
                 {
                     Console.WriteLine($"\tOperation will retry after {delaySeconds} seconds.");
                     await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+                }
+                else
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(60));
                 }
             }
         }
