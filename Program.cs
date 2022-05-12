@@ -32,7 +32,7 @@ async Task<int> GetEnrollmentGroupsRegistrationsCountAsync(ProvisioningServiceCl
     {
         ParallelOptions parallelOptions = new()
         {
-            MaxDegreeOfParallelism = 20
+            MaxDegreeOfParallelism = 15
         };
 
         while (query.HasNext())
@@ -64,10 +64,24 @@ async Task<int> GetRegistrationsCountAsync(ProvisioningServiceClient psc, Enroll
         {
             Console.WriteLine($"Calculating registrations in {group.EnrollmentGroupId}: {registrations} so far...");
         }, null, 5000, 5000);
+
+
         while (registrationsQuery.HasNext())
         {
-            QueryResult registrationQueryResult = await registrationsQuery.NextAsync().ConfigureAwait(false);
-            registrations += registrationQueryResult.Items.Count();
+            try
+            {
+                QueryResult registrationQueryResult = await registrationsQuery.NextAsync().ConfigureAwait(false);
+                registrations += registrationQueryResult.Items.Count();
+            }
+            catch (ProvisioningServiceClientHttpException ex) when (ex.IsTransient && ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                Console.WriteLine($"\tTransient error retriving registrations page. {ex.ErrorMessage}.");
+                if (ex.Fields.Keys.Contains("Retry-After") && int.TryParse(ex.Fields["Retry-After"], out var delaySeconds))
+                {
+                    Console.WriteLine($"\tOperation will retry after {delaySeconds} seconds.");
+                    await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+                }
+            }
         }
         timer.Change(Timeout.Infinite, Timeout.Infinite);
     }
