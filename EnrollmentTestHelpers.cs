@@ -271,7 +271,7 @@ public class EnrollmentTestHelpers
         {
             if (ex.IsTransient)
             {
-                Console.WriteLine($"Transient error trying to provision {deviceId}. Message {ex.Message}. Delaying 1 minute to continue.");
+                Console.WriteLine($"Transient error trying to provision {deviceId}. Message: {ex.Message} Delaying 1 minute to continue.");
                 await Task.Delay(60000);
             }
         }

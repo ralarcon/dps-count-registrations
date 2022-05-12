@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
+using dps_count_records;
 
 using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((config) => { config.AddUserSecrets<Program>(); })
@@ -27,15 +28,15 @@ async Task<int> GetEnrollmentGroupsRegistrationsCountAsync(ProvisioningServiceCl
     int totalEnrollmentGroupsRegistrations = 0;
     using (Query query = psc.CreateEnrollmentGroupQuery(new QuerySpecification("SELECT * FROM enrollmentGroups")))
     {
+        ParallelOptions parallelOptions = new()
+        {
+            MaxDegreeOfParallelism = 15
+        };
+
         while (query.HasNext())
         {
             QueryResult queryResult = await query.NextAsync().ConfigureAwait(false);
             
-            ParallelOptions parallelOptions = new()
-            {
-                MaxDegreeOfParallelism = 15
-            };
-
             await Parallel.ForEachAsync(queryResult.Items.Select(i => i as EnrollmentGroup), parallelOptions, async (group, token) =>
             {
                 if (group != null)
