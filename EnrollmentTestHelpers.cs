@@ -39,7 +39,7 @@ public class EnrollmentTestHelpers
         _psc = psc;
         _config = config;
         _dpsEndpoint = _config.GetValue<string>("Settings:Dps:Endpoint");
-        _dpsScopeId = _config.GetValue<string>("Settings:Dps:DpsScope");
+        _dpsScopeId = _config.GetValue<string>("Settings:Dps:IdScope");
         _iotHubRegistry = RegistryManager.CreateFromConnectionString(config.GetValue<string>("Settings:IotHub:ConnectionString"));
 
     }
@@ -231,7 +231,7 @@ public class EnrollmentTestHelpers
         Stopwatch watch = Stopwatch.StartNew();
         Timer timer = new Timer((state) =>
         {
-            Console.WriteLine($"Devices provisioned: {provisioned}. Provision ratio: {provisioned / watch.Elapsed.TotalSeconds:0.00} reg/seg");
+            Console.WriteLine($"Devices provisioned: {provisioned}. Provision ratio: {provisioned / watch.Elapsed.TotalSeconds:0.00} reg/sec.");
         }, null, 5000, 5000);
         IEnumerable<int> deviceIndexes = Enumerable.Range(0, provisionDevicesCount);
         await Parallel.ForEachAsync(deviceIndexes, parallelOptions, async (i, token) =>
@@ -250,7 +250,7 @@ public class EnrollmentTestHelpers
         timer.Change(Timeout.Infinite, Timeout.Infinite);
         Console.WriteLine($"Total Devices Provisioned: {provisioned}.");
         Console.WriteLine($"Total Seconds: {watch.Elapsed.TotalSeconds}.");
-        Console.WriteLine($"Provision ratio: {provisioned / watch.Elapsed.TotalSeconds:0.00} reg/seg.");
+        Console.WriteLine($"Provision ratio: {provisioned / watch.Elapsed.TotalSeconds:0.00} reg/sec.");
     }
 
 

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using dps_count_records;
+using System.Diagnostics;
 
 using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((config) => { config.AddUserSecrets<Program>(); })
@@ -14,11 +15,12 @@ string dpsConnStr = config.GetValue<string>("Settings:Dps:ConnectionString");
 
 using (ProvisioningServiceClient psc = ProvisioningServiceClient.CreateFromConnectionString(dpsConnStr))
 {
+    Stopwatch watch = Stopwatch.StartNew();
     int enrollmentGroupsRegistrations = await GetEnrollmentGroupsRegistrationsCountAsync(psc).ConfigureAwait(false);
 
     int individualRegistrations = await GetIndividualRegistrationCountAsync(psc).ConfigureAwait(false);
 
-    Console.WriteLine($"\nTotal: {enrollmentGroupsRegistrations + individualRegistrations} registrations.");
+    Console.WriteLine($"\nTotal: {enrollmentGroupsRegistrations + individualRegistrations} registrations. [Duration: {watch.Elapsed.TotalSeconds:0.##} seconds])");
 }
 
 async Task<int> GetEnrollmentGroupsRegistrationsCountAsync(ProvisioningServiceClient psc)
@@ -26,11 +28,11 @@ async Task<int> GetEnrollmentGroupsRegistrationsCountAsync(ProvisioningServiceCl
     Console.WriteLine("Calculating device enrollment group registrations...");
 
     int totalEnrollmentGroupsRegistrations = 0;
-    using (Query query = psc.CreateEnrollmentGroupQuery(new QuerySpecification("SELECT * FROM enrollmentGroups")))
+    using (Query query = psc.CreateEnrollmentGroupQuery(new QuerySpecification("SELECT * FROM enrollmentGroups"), 1024))
     {
         ParallelOptions parallelOptions = new()
         {
-            MaxDegreeOfParallelism = 15
+            MaxDegreeOfParallelism = 20
         };
 
         while (query.HasNext())
@@ -56,13 +58,18 @@ async Task<int> GetRegistrationsCountAsync(ProvisioningServiceClient psc, Enroll
 {
     int registrations = 0;
     using (Query registrationsQuery = psc.CreateEnrollmentGroupRegistrationStateQuery(
-            new QuerySpecification("SELECT * FROM enrollmentGroups"), group.EnrollmentGroupId))
+            new QuerySpecification("SELECT * FROM enrollmentGroups"), group.EnrollmentGroupId, 5000))
     {
+        Timer timer = new Timer((state) =>
+        {
+            Console.WriteLine($"Calculating registrations in {group.EnrollmentGroupId}: {registrations} so far...");
+        }, null, 5000, 5000);
         while (registrationsQuery.HasNext())
         {
             QueryResult registrationQueryResult = await registrationsQuery.NextAsync().ConfigureAwait(false);
             registrations += registrationQueryResult.Items.Count();
         }
+        timer.Change(Timeout.Infinite, Timeout.Infinite);
     }
     return registrations;
 }
